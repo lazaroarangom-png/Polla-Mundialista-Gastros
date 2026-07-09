@@ -392,15 +392,16 @@ function calcPts(name){
 
 function renderRanking(){
   const el=document.getElementById('rank');
-  // Combina nombres de allParticipants y historicPts para no perder nadie
   const nameSet = new Set([
     ...Object.keys(allParticipants).filter(n=>n!=='_joined'),
-    ...Object.keys(historicPts)
+    ...Object.keys(historicPts),
   ]);
-  const names = [...nameSet];
+  const names = [...nameSet].filter(n=>n && n!=='_joined');
   const rc=Object.keys(results).length;
+  // Debug info
+  const debugInfo = `participants:${Object.keys(allParticipants).length} | historicPts:${Object.keys(historicPts).length} | names:${names.length}`;
   const now=new Date().toLocaleString('es-CO',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'});
-  if(!names.length){el.innerHTML='<p style="color:var(--text2);padding:20px 0">Nadie registrado aún.</p>';return;}
+  if(!names.length){el.innerHTML=`<p style="color:var(--text2);padding:20px 0">Nadie registrado aún.</p><p style="color:var(--text3);font-size:11px;margin-top:8px">Debug: ${debugInfo}</p>`;return;}
   const ranked=names.map(n=>({n,...calcPts(n)})).sort((a,b)=>b.pts-a.pts||b.exact-a.exact||b.winner-a.winner);
   const pos=i=>['🥇','🥈','🥉'][i]||(i+1)+'°';
   el.innerHTML=`<div class="lupd">${now} <button class="rbtn" onclick="init().then(renderRanking)">↺</button></div>

@@ -216,20 +216,23 @@ async function init(){
   }
 
   try { results = await fbGet('results') || {}; } catch(e){ results={}; }
-  try { allParticipants = await fbGet('participants') || {}; } catch(e){ allParticipants={}; }
-
-  // Restaura participantes si están vacíos
-  if(Object.keys(allParticipants).length===0){
-    try {
-      const bk = await fbGet('participants_fase_grupos') || {};
-      if(Object.keys(bk).length>0){
-        const r={};
-        for(const n of Object.keys(bk)) r[n]={_joined:true};
-        await fbSet('participants',r);
-        allParticipants=r;
-      }
-    } catch(e){}
-  }
+  // Carga participantes desde múltiples fuentes y combina
+  try {
+    const p1 = await fbGet('participants') || {};
+    const p2 = await fbGet('participants_fase_grupos') || {};
+    const p3 = await fbGet('participants_16avos') || {};
+    // Combina todos los nombres de todas las fuentes
+    const allNames = new Set([...Object.keys(p1), ...Object.keys(p2), ...Object.keys(p3)]);
+    allParticipants = {};
+    for(const name of allNames){
+      if(name === '_joined') continue;
+      allParticipants[name] = p1[name] || {_joined:true};
+    }
+    // Si participants en Firebase está desactualizado, lo actualiza
+    if(Object.keys(p1).length < Object.keys(allParticipants).length){
+      await fbSet('participants', allParticipants);
+    }
+  } catch(e){ allParticipants={}; }
 
   const saved = localStorage.getItem('polla26_user');
   if(saved){
@@ -389,7 +392,12 @@ function calcPts(name){
 
 function renderRanking(){
   const el=document.getElementById('rank');
-  const names=Object.keys(allParticipants).filter(n=>n!=='_joined');
+  // Combina nombres de allParticipants y historicPts para no perder nadie
+  const nameSet = new Set([
+    ...Object.keys(allParticipants).filter(n=>n!=='_joined'),
+    ...Object.keys(historicPts)
+  ]);
+  const names = [...nameSet];
   const rc=Object.keys(results).length;
   const now=new Date().toLocaleString('es-CO',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'});
   if(!names.length){el.innerHTML='<p style="color:var(--text2);padding:20px 0">Nadie registrado aún.</p>';return;}
